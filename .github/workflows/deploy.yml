@@ -57,21 +57,18 @@ jobs:
         if: ${{ github.event.inputs.action == 'apply' }}
         run: sudo apt-get update && sudo apt-get install -y ansible
 
-      - name: Set up SSH Key
+      - name: Set up SSH Permissions
         if: ${{ github.event.inputs.action == 'apply' }}
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deployer-key
-          chmod 600 ~/.ssh/deployer-key
+          chmod 600 ./Terraform/ubuntu_vm.pem
 
       - name: Create Ansible Inventory
         if: ${{ github.event.inputs.action == 'apply' }}
         run: |
           echo "[web]" > inventory.ini
-          echo "$EC2_IP ansible_user=${{ secrets.EC2_SSH_USER }}" >> inventory.ini
+          echo "$EC2_IP ansible_user=ubuntu ansible_ssh_private_key_file=./Terraform/ubuntu_vm.pem" >> inventory.ini
 
       - name: Run Ansible Playbook
         if: ${{ github.event.inputs.action == 'apply' }}
         run: |
-          ansible-playbook -i inventory.ini ./Ansible/playbook.yml \
-            --private-key ~/.ssh/deployer-key
+          ansible-playbook -i inventory.ini ./Ansible/playbook.yml
