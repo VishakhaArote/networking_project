@@ -1,9 +1,16 @@
 name: Provision and Configure EC2
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action to perform"
+        required: true
+        default: apply
+        type: choice
+        options:
+          - apply
+          - destroy
 
 jobs:
   provision:
@@ -14,7 +21,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Terraform
@@ -26,17 +33,45 @@ jobs:
         run: terraform init
         working-directory: ./Terraform
 
-    #  - name: Terraform Apply
-    #    run: terraform apply -auto-approve
-     #   working-directory: ./Terraform
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve
+      - name: Terraform Apply or Destroy
+        run: |
+          if [[ "${{ github.event.inputs.action }}" == "destroy" ]]; then
+            terraform destroy -auto-approve
+          else
+            terraform apply -auto-approve
+          fi
         working-directory: ./Terraform
 
-      #- name: Wait for EC2 to boot
-       # run: sleep 60
+      - name: Get EC2 Public IP from Terraform output
+        if: ${{ github.event.inputs.action == 'apply' }}
+        id: get_ip
+        run: |
+          cd ./Terraform
+          echo "EC2_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
 
-      #- name: Install Ansible
-       # run: sudo apt-get update && sudo apt-get install -y ansible
+      - name: Wait for EC2 to Boot
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: sleep 60
 
-      
+      - name: Install Ansible
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: sudo apt-get update && sudo apt-get install -y ansible
+
+      - name: Set up SSH Key
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deployer-key
+          chmod 600 ~/.ssh/deployer-key
+
+      - name: Create Ansible Inventory
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          echo "[web]" > inventory.ini
+          echo "$EC2_IP ansible_user=${{ secrets.EC2_SSH_USER }}" >> inventory.ini
+
+      - name: Run Ansible Playbook
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          ansible-playbook -i inventory.ini ./Ansible/playbook.yml \
+            --private-key ~/.ssh/deployer-key
