@@ -21,9 +21,11 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        working-directory: ./Terraform
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+        working-directory: ./Terraform
 
       - name: Wait for EC2 to boot
         run: sleep 60
