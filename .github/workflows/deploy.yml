@@ -23,7 +23,6 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        uses: Terraform/
         run: terraform apply -auto-approve
 
       - name: Wait for EC2 to boot
