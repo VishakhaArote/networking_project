@@ -35,7 +35,7 @@ jobs:
 
       - name: Terraform Apply or Destroy
         run: |
-          if [[ "${{ github.event.inputs.action }}" == "destroy" ]]; then
+          if [ "${{ inputs.action }}" == "destroy" ]; then
             terraform destroy -auto-approve
           else
             terraform apply -auto-approve
@@ -43,34 +43,34 @@ jobs:
         working-directory: ./Terraform
 
       - name: Get EC2 Public IP from Terraform output
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: inputs.action == 'apply'
         id: get_ip
         run: |
           cd ./Terraform
           echo "EC2_IP=$(terraform output -raw ec2_public_ip)" >> $GITHUB_ENV
 
-      - name: Wait for EC2 to Boot
-        if: ${{ github.event.inputs.action == 'apply' }}
+      - name: Wait for EC2 to boot
+        if: inputs.action == 'apply'
         run: sleep 90
 
       - name: Install Ansible
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: inputs.action == 'apply'
         run: sudo apt-get update && sudo apt-get install -y ansible
 
       - name: Add SSH Private Key from Secret
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: inputs.action == 'apply'
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ./Terraform/ubuntu_vm.pem
-          chmod 600 ./Terraform/ubuntu_vm.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
       - name: Create Ansible Inventory
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: inputs.action == 'apply'
         run: |
-          echo "[web]" > inventory.ini
-          echo "$EC2_IP ansible_user=${{ secrets.EC2_SSH_USER }} ansible_ssh_private_key_file=./Terraform/ubuntu_vm.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" >> inventory.ini
+          echo "[web]" > ./inventory.ini
+          echo "$EC2_IP ansible_user=${{ secrets.EC2_SSH_USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" >> ./inventory.ini
 
       - name: Run Ansible Playbook
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: inputs.action == 'apply'
         run: |
-          ansible-playbook -i inventory.ini ./Ansible/playbook.yml
+          ansible-playbook -i ./inventory.ini ./Ansible/playbook.yml
