@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple TODO App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>📝 TODO List</h1>
+    <form method="POST" action="/add">
+        <input type="text" name="task" placeholder="Enter new task" required>
+        <button type="submit">Add Task</button>
+    </form>
+
+    <ul>
+        {% for task in todos %}
+        <li>{{ task }} <a href="/delete/{{ loop.index0 }}">❌</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
