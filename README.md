@@ -19,25 +19,42 @@ This project automates cloud infrastructure provisioning and application deploym
 - **Flask** – Lightweight Python web framework
 
 ---
-
 ## Part 1: Infrastructure Provisioning (Terraform)
 
 ### Objective
 
-Provision an AWS infrastructure including VPC, subnets, security groups, and an EC2 instance.
+Provision AWS cloud infrastructure using Terraform with modular code design. This includes a VPC, security groups, and an EC2 instance.
 
-### Files
+### File Structure
 
-- `main.tf` – EC2 provisioning
-- `vpc.tf` – Custom VPC, subnets, internet gateway
-- `sg.tf` – Security groups with inbound rule for port 5000 (Flask)
-- `outputs.tf` – Outputs public IP
-- `backend.tf` – S3 remote backend with DynamoDB state locking
+**Root Directory:**
+
+- `main.tf` – Calls all modules (vpc, security_group, ec2)
+- `backend.tf` – Configures S3 remote backend and DynamoDB locking
+- `outputs.tf` – Exposes public IP and other outputs
+
+**Module Structure:**
+
+- `modules/vpc/`
+  - `main.tf` – Defines VPC, subnets, internet gateway, and routing
+  - `variables.tf` – Input variables for the VPC module
+  - `outputs.tf` – VPC-related outputs (e.g., subnet IDs, VPC ID)
+
+- `modules/security_group/`
+  - `main.tf` – Defines security group with ingress on ports 22 (SSH) and 5000 (Flask)
+  - `variables.tf` – Input variables like allowed ports and CIDRs
+  - `outputs.tf` – Outputs the security group ID
+
+- `modules/ec2/`
+  - `main.tf` – Launches EC2 instance using Ubuntu AMI
+  - `variables.tf` – Key pair name, instance type, SG/VPC references
+  - `outputs.tf` – Outputs the instance's public IP
 
 ### Notes
 
-- Uses modular structure
-- Remote state backend configured with `terraform init`
+- Modular architecture enhances reusability and separation of concerns.
+- State is stored in a secure S3 bucket with locking provided by DynamoDB.
+- Resources are provisioned in the correct order via module dependency chaining.
 
 ### Run Instructions
 
@@ -45,7 +62,10 @@ Provision an AWS infrastructure including VPC, subnets, security groups, and an 
 terraform init
 terraform plan
 terraform apply
-```
+
+
+
+
 
 ---
 
